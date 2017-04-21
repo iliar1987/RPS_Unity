@@ -12,20 +12,77 @@ RWTexture2D<float> Scores;
 RWTexture2D<float4> LastFrame;
 RWTexture2D<float4> NextFrame;
 
+int width;
+int height;
+
+RWStructuredBuffer<float> cbScores;
+
 static const float2 k = float2(23.1406926327792690,2.6651441426902251);
 
 float rnda( float seed, float2 uv ) { return frac(cos( fmod(seed,1024.0 * dot(uv,k) )) ); }
 
+float fDiffusionPower,fDiffusionCoeff,fNormPower;
+
 [numthreads(8,8,1)]
 void CalcScores(uint3 id : SV_DispatchThreadID)
 {
-	
+	int scoreInd = id.y * width + id.x;
+
+	int2 neighborIndices[4];
+	neighborIndices[0] = int2( (id.x == 0 ? width - 1 : id.x-1 ), id.y);
+	neighborIndices[1] = int2( (id.x == width-1 ? 0 : id.x+1 ), id.y);
+	neighborIndices[2] = int2( id.x, id.y == 0 ? height - 1 : id.y - 1);
+	neighborIndices[3] = int2( id.x, id.y == height-1 ? 0 : id.y + 1);
+
+	float scoreOut = 0.0f;
+	float4 myPixel = LastFrame[id.xy];
+	for ( int i=0; i <4; ++i)
+	{
+		float4 neighbor = LastFrame[neighborIndices[i].xy];
+		scoreOut += myPixel.x * neighbor.y - neighbor.x*myPixel.y
+			+ myPixel.y * neighbor.z - neighbor.y*myPixel.z
+			+ myPixel.z * neighbor.x - neighbor.z*myPixel.x;
+	}
+
+	cbScores[scoreInd] = scoreOut;
 }
 
 [numthreads(8,8,1)]
 void CalcNextFrame(uint3 id : SV_DispatchThreadID)
 {
-	
+	int scoreInd = id.y * width + id.x;
+
+	int2 neighborIndices[5];
+	neighborIndices[0] = int2( (id.x == 0 ? width - 1 : id.x-1 ), id.y);
+	neighborIndices[1] = int2( (id.x == width-1 ? 0 : id.x+1 ), id.y);
+	neighborIndices[2] = int2( id.x, id.y == 0 ? height - 1 : id.y - 1);
+	neighborIndices[3] = int2( id.x, id.y == height-1 ? 0 : id.y + 1);
+	neighborIndices[4] = int2(id.x,id.y);
+
+	float fHighestScore = cbScores[scoreInd];
+	int chosenInd=4;
+	for ( int i=0 ; i<4 ; ++i)
+	{
+		int nhScoreInd = neighborIndices[i].y * width + neighborIndices[i].x;
+		float nhScore = cbScores[nhScoreInd];
+		if ( nhScore > 1.01f * fHighestScore )
+		{
+			chosenInd = i;
+			fHighestScore = nhScore;
+		}
+	}
+
+	float4 myPixel = LastFrame[id.xy];
+	float4 chosenPixel = LastFrame[neighborIndices[chosenInd].xy];
+	float4 pixelResult = chosenPixel*fDiffusionCoeff + (1.0f-fDiffusionCoeff) * myPixel;
+	pixelResult = pow(pixelResult,fDiffusionPower);
+	float fSum=0.0f;
+	for ( int j = 0; j<3 ; j++)
+	{
+		fSum += pow(pixelResult[j],fNormPower);
+	}
+	pixelResult.xyz /= pow(fSum,1.0f/fNormPower);
+	NextFrame[id.xy] = pixelResult;
 }
 
 [numthreads(8,8,1)]
