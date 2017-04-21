@@ -1,0 +1,41 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CalcScores
+#pragma kernel CalcNextFrame
+#pragma kernel Randomize
+
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> Result;
+RWTexture2D<float> Scores;
+
+RWTexture2D<float4> LastFrame;
+RWTexture2D<float4> NextFrame;
+
+static const float2 k = float2(23.1406926327792690,2.6651441426902251);
+
+float rnda( float seed, float2 uv ) { return frac(cos( fmod(seed,1024.0 * dot(uv,k) )) ); }
+
+[numthreads(8,8,1)]
+void CalcScores(uint3 id : SV_DispatchThreadID)
+{
+	
+}
+
+[numthreads(8,8,1)]
+void CalcNextFrame(uint3 id : SV_DispatchThreadID)
+{
+	
+}
+
+[numthreads(8,8,1)]
+void Randomize(uint3 id : SV_DispatchThreadID)
+{
+	float2 uv = float2(id.x,id.y);
+	//float2 uv = float2(3,3);
+	float r = rnda(547345624.,uv);
+	float g = rnda(235234235.,uv);
+	float b = rnda(123456780.,uv);
+	Result[id.xy] = clamp(float4(r,g,b,1.0),0,1);
+	//Result[id.xy] = float4(1.0,1.0,1.0,1.0);
+}
