@@ -2,7 +2,7 @@
 #pragma kernel CalcScores
 #pragma kernel CalcNextFrame
 #pragma kernel Randomize
-
+#pragma kernel SetColor
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
@@ -11,9 +11,15 @@ RWTexture2D<float> Scores;
 
 RWTexture2D<float4> LastFrame;
 RWTexture2D<float4> NextFrame;
+RWTexture2D<float4> Target;
 
 int width;
 int height;
+
+float fSetColorRadius = 0.1;
+float fSetColorCoeff = 0.2;
+float4 colSetColor = float4(1.0,1.0,1.0,1.0);
+float2 vecSetColorCenterUV = float2(0,0);
 
 RWStructuredBuffer<float> cbScores;
 
@@ -96,3 +102,27 @@ void Randomize(uint3 id : SV_DispatchThreadID)
 	Result[id.xy] = clamp(float4(r,g,b,1.0),0,1);
 	//Result[id.xy] = float4(1.0,1.0,1.0,1.0);
 }
+
+[numthreads(8,8,1)]
+void SetColor(uint3 id : SV_DispatchThreadID)
+{
+	float2 uv = float2(id.xy/float2(width,height));
+	float2 vecDist = uv - vecSetColorCenterUV;
+	vecDist = abs(vecDist);
+	if ( vecDist.x > 0.5f )
+		vecDist.x = 1.0f - vecDist.x;
+	if ( vecDist.y > 0.5f )
+		vecDist.y = 1.0f - vecDist.y;
+
+	float fDistance = length(vecDist);
+	if ( fDistance > fSetColorRadius*4 )
+		return;
+	else
+	{
+		float4 pixel = Target[id.xy];
+		pixel += colSetColor * fSetColorCoeff * exp(-fDistance*fDistance / fSetColorRadius / fSetColorRadius);
+		pixel = clamp(pixel,0,1);
+		Target[id.xy] = pixel;
+	}
+}
+

@@ -14,9 +14,9 @@ public class BillBoard1 : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		var camera = Camera.main;
-		transform.forward = camera.transform.forward;
-		transform.position = camera.transform.position + camera.transform.forward*10;
+//		var camera = Camera.main;
+//		transform.forward = camera.transform.forward;
+//		transform.position = camera.transform.position + camera.transform.forward*10;
 		mat.mainTexture = rpsScript.GetCurrentFrameTexture();
 
 	}

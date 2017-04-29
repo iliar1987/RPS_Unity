@@ -10,8 +10,8 @@ public class UpdateRPS : MonoBehaviour {
 	private int width = 1024;
 	private int height = 1024;
 	private float fDiffusionCoeff = 0.5f;
-	private float fDiffusionPower = 1.1f;
-	private float fNormPower = 0.8f;
+	private float fDiffusionPower = 1.01f;
+	private float fNormPower = 2.0f;
 
 	public RenderTexture GetCurrentFrameTexture()
 	{
@@ -45,6 +45,17 @@ public class UpdateRPS : MonoBehaviour {
 //		}
 
 		MakeOneStep ();
+	}
+
+	public void AddColor(Vector2 texCoords,Color color,float radius,float additionCoeff)
+	{
+		int setColKernel = m_RPS_compute.FindKernel ("SetColor");
+		m_RPS_compute.SetFloat ("fSetColorRadius", radius);
+		m_RPS_compute.SetFloat ("fSetColorCoeff", additionCoeff);
+		m_RPS_compute.SetFloats ("colSetColor", new float[4] {color.r,color.g,color.b,color.a});
+		m_RPS_compute.SetFloats ("vecSetColorCenterUV", new float[2] {texCoords.x,texCoords.y});
+		m_RPS_compute.SetTexture (setColKernel, "Target", m_texCurrentFrame);
+		m_RPS_compute.Dispatch (setColKernel,width / 8,height / 8,1);
 	}
 
 	void Randomize()
